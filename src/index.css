@@ -1,0 +1,99 @@
+@import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
+
+@layer base {
+  :root,
+  [data-theme="dark"] {
+    --cs-bg: #111214;
+    --cs-sidebar: #17191C;
+    --cs-surface: #16181B;
+    --cs-surface-elevated: #1C1F24;
+    --cs-surface-hover: #1E2127;
+    --cs-text: #F1F1EF;
+    --cs-text-secondary: #969BA3;
+    --cs-text-muted: #686E78;
+    --cs-border: #292C30;
+    --cs-border-subtle: #202328;
+    --cs-accent: #A6B8FF;
+    --cs-accent-muted: rgba(166, 184, 255, 0.12);
+    --cs-success: #65C99A;
+    --cs-warning: #E7B76D;
+    --cs-danger: #E77E7E;
+  }
+
+  [data-theme="slate"] {
+    --cs-bg: #15181E;
+    --cs-sidebar: #1B1F27;
+    --cs-surface: #1B1F27;
+    --cs-surface-elevated: #222731;
+    --cs-surface-hover: #252B36;
+    --cs-text: #F1F2F4;
+    --cs-text-secondary: #9BA2AE;
+    --cs-text-muted: #6F7785;
+    --cs-border: #2D333F;
+    --cs-border-subtle: #242933;
+    --cs-accent: #A6B8FF;
+    --cs-accent-muted: rgba(166, 184, 255, 0.14);
+    --cs-success: #65C99A;
+    --cs-warning: #E7B76D;
+    --cs-danger: #E77E7E;
+  }
+
+  [data-theme="light"] {
+    --cs-bg: #F6F7F8;
+    --cs-sidebar: #ECEEF0;
+    --cs-surface: #FFFFFF;
+    --cs-surface-elevated: #F1F3F5;
+    --cs-surface-hover: #EAECEF;
+    --cs-text: #16181D;
+    --cs-text-secondary: #5A606A;
+    --cs-text-muted: #848B96;
+    --cs-border: #D8DCE2;
+    --cs-border-subtle: #E6E9EE;
+    --cs-accent: #3B5BDB;
+    --cs-accent-muted: rgba(59, 91, 219, 0.1);
+    --cs-success: #1E8E5A;
+    --cs-warning: #B7791F;
+    --cs-danger: #C93B3B;
+  }
+
+  html,
+  body {
+    height: 100%;
+    overflow: hidden;
+    background-color: var(--cs-bg);
+    color: var(--cs-text);
+    font-family: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, sans-serif;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    letter-spacing: 0.005em;
+  }
+
+  code,
+  pre,
+  .font-mono {
+    font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+}
+
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Native macOS subtle custom scrollbars */
+::-webkit-scrollbar {
+  width: 7px;
+  height: 7px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(150, 155, 163, 0.22);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(150, 155, 163, 0.38);
+}

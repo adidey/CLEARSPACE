@@ -1,0 +1,6 @@
+{
+  "name": "Clearspace — Developer Storage Intelligence",
+  "description": "A local-first macOS desktop storage intelligence utility for developers to visualize disk consumption, inspect build artifacts, and understand regeneration impact before cleaning.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
