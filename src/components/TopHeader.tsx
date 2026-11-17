@@ -47,7 +47,7 @@ export function TopHeader({
           className="text-xs font-mono"
           style={{ color: 'var(--cs-text-secondary)' }}
         >
-          {currentScan.volumeName}
+          {currentScan.rootItem?.name || currentScan.volumeName}
         </span>
         <span aria-hidden="true" style={{ color: 'var(--cs-text-muted)' }}>
           ·

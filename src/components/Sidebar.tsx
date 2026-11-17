@@ -230,7 +230,7 @@ export function Sidebar({
                 className="w-3.5 h-3.5 shrink-0"
                 style={{ color: 'var(--cs-accent)' }}
               />
-              <span className="truncate">{currentScan.volumeName}</span>
+              <span className="truncate">{currentScan.rootItem?.name || currentScan.volumeName}</span>
             </span>
             <span
               className="text-[11px] font-mono tabular-nums shrink-0"
