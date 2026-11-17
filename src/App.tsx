@@ -3,7 +3,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import { useState } from 'react';
 import { InspectionDrawer } from './components/InspectionDrawer';
+import { OnboardingModal } from './components/OnboardingModal';
 import { QuickSearchModal } from './components/QuickSearchModal';
 import { Sidebar } from './components/Sidebar';
 import { TopHeader } from './components/TopHeader';
@@ -61,6 +63,22 @@ export default function App() {
     } else {
       setInspectedItem(itemOrId);
     }
+  };
+
+  const [showOnboarding, setShowOnboarding] = useState<boolean>(
+    () => !localStorage.getItem('clearspace.onboarded.v1')
+  );
+
+  const handleOnboardingDismiss = () => {
+    localStorage.setItem('clearspace.onboarded.v1', '1');
+    setShowOnboarding(false);
+  };
+
+  const handleOnboardingSelectAndScan = () => {
+    localStorage.setItem('clearspace.onboarded.v1', '1');
+    setShowOnboarding(false);
+    selectScanDirectory();
+    startScan('normal');
   };
 
   return (
@@ -224,6 +242,14 @@ export default function App() {
         onSelectInspect={setInspectedItem}
         onOpenInExplorer={navigateToFolderInExplorer}
       />
+
+      {/* First-Launch Onboarding Modal */}
+      {showOnboarding && (
+        <OnboardingModal
+          onSelectAndScan={handleOnboardingSelectAndScan}
+          onDismiss={handleOnboardingDismiss}
+        />
+      )}
 
       {/* Transient Desktop Feedback Banner */}
       {toastMessage && (

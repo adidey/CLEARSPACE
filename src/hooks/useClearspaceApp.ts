@@ -23,12 +23,12 @@ const SETTINGS_STORAGE_KEY = 'clearspace.settings.v1';
 const DEFAULT_SETTINGS: AppSettings = {
   appearance: 'dark',
   storageUnits: 'decimal',
-  defaultScanLocation: '~',
+  defaultScanLocation: '',
   excludedFolders: [
-    '~/Documents/Tax Archives',
     '~/.ssh',
     '~/.gnupg',
-    '~/Projects/commerce-monorepo/.env.local',
+    '~/.aws',
+    '~/.config',
   ],
   maxScanDepth: 'unlimited',
   includeHiddenFiles: true,
