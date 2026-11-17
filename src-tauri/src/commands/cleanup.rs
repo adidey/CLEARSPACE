@@ -3,35 +3,23 @@ use crate::models::cleanup::{CleanupExecutionRequest, CleanupExecutionResponse, 
 use crate::persistence::database::DatabaseManager;
 use std::fs;
 use std::path::Path;
-use std::process::Command;
 use tauri::State;
 
-/// Moves a validated filesystem item to macOS Trash using Finder AppleScript
+/// Moves a validated filesystem item to macOS Trash via NSWorkspace (trash crate).
+/// Never permanently deletes — item is fully recoverable via Finder's Put Back.
 pub fn move_single_item_to_trash(path: &Path) -> Result<(), String> {
-    // Immediate TOCTOU guard: re-verify target metadata right before invocation
+    // TOCTOU guard: re-verify symlink status immediately before the operation
     let sym_meta = fs::symlink_metadata(path)
         .map_err(|e| format!("Target path cannot be accessed prior to trash operation: {}", e))?;
     if sym_meta.file_type().is_symlink() {
-        return Err(format!("TOCTOU Guard: Target {} changed into a symbolic link. Aborting cleanup.", path.display()));
+        return Err(format!(
+            "TOCTOU guard: {} became a symbolic link. Aborting.",
+            path.display()
+        ));
     }
 
-    let output = Command::new("osascript")
-        .arg("-e")
-        .arg("on run argv")
-        .arg("-e")
-        .arg("tell application \"Finder\" to delete POSIX file (item 1 of argv)")
-        .arg("-e")
-        .arg("end run")
-        .arg(path.as_os_str())
-        .output()
-        .map_err(|e| format!("Failed to invoke macOS Trash via osascript: {}", e))?;
-
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
-        return Err(format!("Finder could not move item to Trash: {}", stderr));
-    }
-
-    Ok(())
+    trash::delete(path)
+        .map_err(|e| format!("Failed to move {} to Trash: {}", path.display(), e))
 }
 
 #[tauri::command]

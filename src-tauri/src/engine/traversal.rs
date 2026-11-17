@@ -108,7 +108,20 @@ where
         Ok(entries) => entries,
         Err(e) => {
             ctx.restricted_paths.push(dir_path.to_string_lossy().to_string());
-            log::warn!("Permission denied / inaccessible path {:?}: {}", dir_path, e);
+            // Downgrade to trace for known macOS system-protected prefixes — these
+            // are always inaccessible without SIP disabled and produce no useful signal.
+            let path_str = dir_path.to_string_lossy();
+            let is_system_protected = path_str.starts_with("/System/")
+                || path_str.starts_with("/private/var/")
+                || path_str.starts_with("/private/etc/")
+                || path_str.starts_with("/System/Volumes/")
+                || path_str == "/System"
+                || path_str == "/private";
+            if is_system_protected {
+                log::trace!("Skipping protected macOS system path {:?}: {}", dir_path, e);
+            } else {
+                log::warn!("Permission denied / inaccessible path {:?}: {}", dir_path, e);
+            }
             // Return empty directory representation rather than aborting whole scan
             return Ok(StorageItem {
                 metadata: FileMetadata {
