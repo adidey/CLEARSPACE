@@ -567,4 +567,65 @@ mod tests {
 
         let _ = fs::remove_dir_all(&val_root);
     }
+
+    #[test]
+    fn test_demo_project_detection_and_safety() {
+        use crate::engine::detection::DetectionEngine;
+        use crate::engine::recommendations::RecommendationEngine;
+        use crate::engine::safety::SafetyValidator;
+        use crate::engine::traversal::{scan_directory_tree, ScanContext};
+        use crate::models::file::RiskClassification;
+        use crate::models::scan::ScanOptions;
+        use std::sync::atomic::AtomicBool;
+        use std::sync::Arc;
+
+        let demo_path = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .parent()
+            .unwrap()
+            .join("demo-test-project");
+
+        if !demo_path.exists() {
+            return;
+        }
+
+        let cancel_flag = Arc::new(AtomicBool::new(false));
+        let options = ScanOptions {
+            target_path: demo_path.to_string_lossy().to_string(),
+            excluded_folders: Vec::new(),
+            include_hidden_files: true,
+            max_depth: None,
+            symlink_handling: "ignore".to_string(),
+        };
+
+        let mut ctx = ScanContext::new(options, cancel_flag);
+        let root = scan_directory_tree(&demo_path, &mut ctx, 0, &|_| {}).unwrap();
+
+        // 1. Verify scan tree
+        assert_eq!(root.metadata.name, "demo-test-project");
+        assert!(ctx.files_scanned >= 4);
+
+        // 2. Verify artifact detection
+        let artifacts = DetectionEngine::detect_artifacts(&root);
+        let nm = artifacts.iter().find(|a| a.name == "node_modules");
+        assert!(nm.is_some(), "node_modules must be detected");
+        let nm = nm.unwrap();
+        assert_eq!(nm.risk, RiskClassification::VerifiedSafe);
+        assert_eq!(nm.associated_project.as_deref(), Some("demo-test-project"));
+
+        // 3. Verify recommendations
+        let recs = RecommendationEngine::generate_recommendations(&artifacts);
+        let rec = recs.iter().find(|r| r.path.contains("node_modules"));
+        assert!(rec.is_some(), "Cleanup recommendation must be created");
+        let rec = rec.unwrap();
+        assert_eq!(rec.risk, RiskClassification::VerifiedSafe);
+        assert!(rec.recovery_command.as_ref().unwrap().contains("npm install"));
+
+        // 4. Verify safety validator accepts node_modules
+        let valid_target = SafetyValidator::validate_cleanup_target(&rec.path);
+        assert!(valid_target.is_ok());
+
+        // 5. Verify safety validator rejects dangerous system roots
+        let root_check = SafetyValidator::validate_cleanup_target("/");
+        assert!(root_check.is_err());
+    }
 }
