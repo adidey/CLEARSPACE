@@ -127,6 +127,7 @@ export interface ScanProgress {
   status: ScanStatus;
   percentComplete: number;
   currentDirectory: string;
+  targetDirectory?: string;
   filesScanned: number;
   bytesAnalysed: number;
   elapsedMs: number;

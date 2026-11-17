@@ -32,6 +32,7 @@ pub struct ScanProgress {
     pub status: ScanStatus,
     pub percent_complete: u32,
     pub current_directory: String,
+    pub target_directory: Option<String>,
     pub files_scanned: u64,
     pub bytes_analysed: u64,
     pub elapsed_ms: u64,

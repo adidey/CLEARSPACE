@@ -74,11 +74,21 @@ export default function App() {
     setShowOnboarding(false);
   };
 
-  const handleOnboardingSelectAndScan = () => {
+  const handleTriggerScan = async () => {
+    if (isNativeBackend) {
+      const chosen = await selectScanDirectory();
+      if (chosen) {
+        await startScan('normal', chosen);
+      }
+    } else {
+      await startScan('normal');
+    }
+  };
+
+  const handleOnboardingSelectAndScan = async () => {
     localStorage.setItem('clearspace.onboarded.v1', '1');
     setShowOnboarding(false);
-    selectScanDirectory();
-    startScan('normal');
+    await handleTriggerScan();
   };
 
   return (
@@ -106,7 +116,7 @@ export default function App() {
           activeSection={activeSection}
           currentScan={currentScan}
           onOpenQuickSearch={() => setIsQuickSearchOpen(true)}
-          onStartScan={() => startScan('normal')}
+          onStartScan={handleTriggerScan}
         />
 
         {/* Content + Optional Inspection Drawer Split */}
@@ -123,7 +133,7 @@ export default function App() {
                 scan={currentScan}
                 unitMode={settings.storageUnits}
                 excludedFolders={settings.excludedFolders}
-                onStartScan={() => startScan('normal')}
+                onStartScan={handleTriggerScan}
                 onRestoreDemo={restorePrimaryDemoDataset}
                 onNavigate={setActiveSection}
                 onInspectItem={handleInspectItemOrId}
@@ -230,7 +240,7 @@ export default function App() {
         onCancelScan={cancelScan}
         onCloseCompleted={() => setIsScanModalOpen(false)}
         isNative={isNativeBackend}
-        onSelectFolder={selectScanDirectory}
+        onSelectFolder={handleTriggerScan}
       />
 
       {/* Raycast-Style Quick Jump Search (Cmd+K) */}

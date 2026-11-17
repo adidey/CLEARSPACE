@@ -119,7 +119,7 @@ export function ScanExperienceModal({
           {isNative ? (
             <div className="w-full flex items-center justify-between gap-3">
               <span style={{ color: 'var(--cs-text-secondary)' }} className="truncate">
-                Target: <code className="font-mono">{progress.currentDirectory || '~'}</code>
+                Target: <code className="font-mono">{progress.targetDirectory || '~'}</code>
               </span>
               {onSelectFolder && !isScanning && (
                 <button

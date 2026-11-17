@@ -193,6 +193,7 @@ where
                 status: ScanStatus::Scanning,
                 percent_complete: 0,
                 current_directory: child_path.to_string_lossy().to_string(),
+                target_directory: Some(ctx.options.target_path.clone()),
                 files_scanned: ctx.files_scanned,
                 bytes_analysed: ctx.bytes_analysed,
                 elapsed_ms: ctx.start_time.elapsed().as_millis() as u64,
@@ -245,7 +246,16 @@ where
             }
         } else {
             // File or symlink
-            let file_size = child_meta.len();
+            let logical_len = child_meta.len();
+            let allocated_bytes = child_meta.blocks() * 512;
+            // On APFS, sparse files (Docker VM disks, Simulator volumes) declare huge logical lengths
+            // but only occupy allocated blocks on disk. Use allocated bytes when smaller.
+            let effective_size = if allocated_bytes > 0 && allocated_bytes < logical_len {
+                allocated_bytes
+            } else {
+                logical_len
+            };
+
             let inode_key = (child_meta.dev(), child_meta.ino());
 
             let mut already_counted = false;
@@ -257,9 +267,9 @@ where
                 }
             }
 
-            let effective_size = if already_counted { 0 } else { file_size };
-            ctx.bytes_analysed += effective_size;
-            total_dir_size += effective_size;
+            let size_to_add = if already_counted { 0 } else { effective_size };
+            ctx.bytes_analysed += size_to_add;
+            total_dir_size += size_to_add;
             total_item_count += 1;
 
             let (cat, label) = categorize_path(&child_path, false);
@@ -282,7 +292,7 @@ where
                     id: format!("file-{}", uuid::Uuid::new_v4()),
                     name: child_name.clone(),
                     path: child_path.to_string_lossy().to_string(),
-                    size_bytes: file_size,
+                    size_bytes: effective_size,
                     kind: kind.to_string(),
                     file_type_label: label.to_string(),
                     last_modified: format_iso_time(child_meta.mtime()),
@@ -301,12 +311,12 @@ where
             };
 
             // Keep top largest files
-            if file_size > 50 * 1024 * 1024 { // > 50MB
+            if effective_size > 50 * 1024 * 1024 { // > 50MB
                 ctx.top_items.push(file_item.clone());
             }
 
             // Only add individual files to the directory tree if depth is reasonable or file is significant (>100KB)
-            if current_depth <= 4 || file_size >= 100 * 1024 {
+            if current_depth <= 4 || effective_size >= 100 * 1024 {
                 children.push(file_item);
             }
         }

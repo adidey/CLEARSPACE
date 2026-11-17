@@ -274,6 +274,7 @@ export function useClearspaceApp() {
         status: ScanStatus.Scanning,
         percentComplete: 2,
         currentDirectory: targetPath,
+        targetDirectory: targetPath,
         filesScanned: 0,
         bytesAnalysed: 0,
         elapsedMs: 0,
