@@ -1,12 +1,20 @@
 import { useMemo, useState } from 'react';
-import { EyeOff, FileSearch, Terminal } from 'lucide-react';
+import {
+  CheckCircle2,
+  FolderArchive,
+  RefreshCw,
+  ShieldAlert,
+  ShieldCheck,
+  Terminal,
+  Trash2,
+} from 'lucide-react';
 import { RiskIndicator } from '../../components/RiskIndicator';
 import {
   CleanupRecommendation,
   RiskClassification,
   StorageUnitMode,
 } from '../../types/storage';
-import { formatBytes, RISK_META } from '../../utils/format';
+import { formatBytes } from '../../utils/format';
 
 interface CleanupRecommendationsViewProps {
   recommendations: CleanupRecommendation[];
@@ -28,403 +36,238 @@ export function CleanupRecommendationsView({
   onReviewCleanup,
 }: CleanupRecommendationsViewProps) {
   const [filter, setFilter] = useState<ClassificationFilter>('ALL');
-  const [hideExcluded, setHideExcluded] = useState<boolean>(false);
+
+  const safeRecommendations = useMemo(() => {
+    return recommendations.filter((r) => r.risk === RiskClassification.VerifiedSafe);
+  }, [recommendations]);
+
+  const totalSafeBytes = useMemo(() => {
+    return safeRecommendations.reduce((acc, r) => acc + r.sizeBytes, 0);
+  }, [safeRecommendations]);
 
   const visibleRecommendations = useMemo(() => {
     return recommendations.filter((rec) => {
       if (filter !== 'ALL' && rec.risk !== filter) return false;
-      if (hideExcluded && excludedFolders.includes(rec.path)) return false;
       return true;
     });
-  }, [recommendations, filter, hideExcluded, excludedFolders]);
-
-  const tierSummaries = useMemo(() => {
-    return (
-      [
-        RiskClassification.VerifiedSafe,
-        RiskClassification.LowRisk,
-        RiskClassification.ReviewRequired,
-        RiskClassification.HighRisk,
-      ] as const
-    ).map((tier) => {
-      const items = recommendations.filter((r) => r.risk === tier);
-      const bytes = items.reduce((sum, r) => sum + r.sizeBytes, 0);
-      return {
-        tier,
-        meta: RISK_META[tier],
-        count: items.length,
-        bytes,
-      };
-    });
-  }, [recommendations]);
+  }, [recommendations, filter]);
 
   return (
-    <div className="p-6 lg:px-8 lg:py-6 max-w-[1320px] mx-auto space-y-6">
-      {/* Header */}
-      <div
-        className="flex flex-col lg:flex-row lg:items-end justify-between gap-4 pb-4 border-b"
-        style={{ borderColor: 'var(--cs-border)' }}
-      >
+    <div className="p-6 lg:px-10 lg:py-8 max-w-[1240px] mx-auto space-y-7 select-none">
+      {/* 1. Clean Hero Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b" style={{ borderColor: 'var(--cs-border)' }}>
         <div className="space-y-1">
-          <h1
-            className="text-xl font-semibold tracking-tight"
-            style={{ color: 'var(--cs-text)' }}
-          >
+          <h1 className="text-2xl font-semibold tracking-tight" style={{ color: 'var(--cs-text)' }}>
             Cleanup Recommendations
           </h1>
-          <p
-            className="text-xs max-w-2xl leading-relaxed"
-            style={{ color: 'var(--cs-text-secondary)' }}
-          >
-            Understand before you delete. Each item details why it was
-            identified, active process checks, deletion consequences, and exact
-            restoration commands — without arbitrary safety percentages.
+          <p className="text-xs max-w-xl leading-relaxed" style={{ color: 'var(--cs-text-secondary)' }}>
+            Only verified build outputs and locked dependency trees are marked safe. Every item can be restored via macOS Trash or rebuilt via CLI.
           </p>
         </div>
 
-        <label
-          className="inline-flex items-center gap-2 text-xs cursor-pointer select-none shrink-0"
-          style={{ color: 'var(--cs-text-secondary)' }}
+        {/* Essential Metric Pill */}
+        <div
+          className="flex items-center gap-3 px-4 py-2.5 rounded-xl border shrink-0"
+          style={{
+            backgroundColor: 'var(--cs-surface)',
+            borderColor: totalSafeBytes > 0 ? 'rgba(101, 201, 154, 0.3)' : 'var(--cs-border)',
+          }}
         >
-          <input
-            type="checkbox"
-            checked={hideExcluded}
-            onChange={(e) => setHideExcluded(e.target.checked)}
-            className="rounded border accent-[#A6B8FF]"
-          />
-          <span>Hide excluded paths ({excludedFolders.length})</span>
-        </label>
+          <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: 'rgba(101, 201, 154, 0.12)' }}>
+            <ShieldCheck className="w-4.5 h-4.5 text-[var(--cs-success)]" />
+          </div>
+          <div>
+            <div className="text-[11px] font-medium" style={{ color: 'var(--cs-text-muted)' }}>
+              Verified Safe to Reclaim
+            </div>
+            <div className="text-base font-semibold font-mono tabular-nums" style={{ color: totalSafeBytes > 0 ? 'var(--cs-success)' : 'var(--cs-text)' }}>
+              {formatBytes(totalSafeBytes, unitMode)}
+            </div>
+          </div>
+        </div>
       </div>
 
-      {/* Four Risk Classification Cards / Interactive Filter Strip */}
-      <div
-        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 border rounded-lg divide-y sm:divide-y-0 sm:divide-x"
-        style={{
-          backgroundColor: 'var(--cs-surface)',
-          borderColor: 'var(--cs-border)',
-        }}
-      >
-        {tierSummaries.map(({ tier, meta, count, bytes }) => {
-          const isSelected = filter === tier;
+      {/* 2. Streamlined Single Filter Bar (No duplicate grids!) */}
+      <div className="flex items-center gap-2 overflow-x-auto pb-1">
+        {(
+          [
+            { id: 'ALL', label: 'All Items', count: recommendations.length },
+            {
+              id: RiskClassification.VerifiedSafe,
+              label: 'Verified Safe',
+              count: recommendations.filter((r) => r.risk === RiskClassification.VerifiedSafe).length,
+            },
+            {
+              id: RiskClassification.LowRisk,
+              label: 'Low Risk',
+              count: recommendations.filter((r) => r.risk === RiskClassification.LowRisk).length,
+            },
+            {
+              id: RiskClassification.ReviewRequired,
+              label: 'Review Required',
+              count: recommendations.filter((r) => r.risk === RiskClassification.ReviewRequired).length,
+            },
+          ] as const
+        ).map((tab) => {
+          const active = filter === tab.id;
           return (
             <button
-              key={tier}
+              key={tab.id}
               type="button"
-              onClick={() => setFilter(isSelected ? 'ALL' : tier)}
-              className="p-4 text-left transition-colors cursor-pointer space-y-1.5"
+              onClick={() => setFilter(tab.id)}
+              className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer whitespace-nowrap"
               style={{
-                borderColor: 'var(--cs-border)',
-                backgroundColor: isSelected
-                  ? 'var(--cs-surface-elevated)'
-                  : 'transparent',
+                backgroundColor: active ? 'var(--cs-surface-elevated)' : 'var(--cs-surface)',
+                border: `1px solid ${active ? 'var(--cs-accent)' : 'var(--cs-border)'}`,
+                color: active ? 'var(--cs-text)' : 'var(--cs-text-secondary)',
               }}
             >
-              <div className="flex items-center justify-between gap-2">
-                <RiskIndicator risk={tier} />
-                <span
-                  className="text-[11px] font-mono tabular-nums"
-                  style={{ color: 'var(--cs-text-muted)' }}
-                >
-                  {count} {count === 1 ? 'item' : 'items'}
-                </span>
-              </div>
-              <div
-                className="text-lg font-semibold font-mono tabular-nums"
-                style={{ color: 'var(--cs-text)' }}
+              <span>{tab.label}</span>
+              <span
+                className="px-1.5 py-0.2 rounded-md font-mono text-[10px]"
+                style={{
+                  backgroundColor: 'var(--cs-bg)',
+                  color: 'var(--cs-text-muted)',
+                }}
               >
-                {formatBytes(bytes, unitMode)}
-              </div>
-              <p
-                className="text-[11px] leading-snug"
-                style={{ color: 'var(--cs-text-secondary)' }}
-              >
-                {meta.description}
-              </p>
+                {tab.count}
+              </span>
             </button>
           );
         })}
       </div>
 
-      {/* Filter Segmented Bar */}
-      <div className="flex items-center justify-between gap-4">
+      {/* 3. Empty State or Clear Recommendation Cards */}
+      {visibleRecommendations.length === 0 ? (
         <div
-          className="inline-flex items-center gap-1 p-1 rounded-lg border flex-wrap"
+          className="p-12 rounded-2xl border text-center space-y-3"
           style={{
             backgroundColor: 'var(--cs-surface)',
             borderColor: 'var(--cs-border)',
           }}
         >
-          {(
-            [
-              { id: 'ALL', label: 'All Classifications' },
-              { id: RiskClassification.VerifiedSafe, label: 'Verified Safe' },
-              { id: RiskClassification.LowRisk, label: 'Low Risk' },
-              {
-                id: RiskClassification.ReviewRequired,
-                label: 'Review Required',
-              },
-              { id: RiskClassification.HighRisk, label: 'High Risk' },
-            ] as const
-          ).map((tab) => {
-            const active = filter === tab.id;
+          <CheckCircle2 className="w-8 h-8 mx-auto text-[var(--cs-success)] opacity-80" />
+          <div className="text-base font-semibold" style={{ color: 'var(--cs-text)' }}>
+            No cleanups needed in this view
+          </div>
+          <p className="text-xs max-w-sm mx-auto" style={{ color: 'var(--cs-text-secondary)' }}>
+            All discovered files are active project essentials.
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-3.5">
+          {visibleRecommendations.map((rec) => {
+            const isSafe = rec.risk === RiskClassification.VerifiedSafe;
             return (
-              <button
-                key={tab.id}
-                type="button"
-                onClick={() => setFilter(tab.id)}
-                className="px-3 py-1 rounded-md text-xs font-medium transition-colors cursor-pointer whitespace-nowrap"
+              <div
+                key={rec.id}
+                className="p-5 rounded-xl border transition-all hover:border-[var(--cs-border-subtle)] space-y-3.5"
                 style={{
-                  backgroundColor: active
-                    ? 'var(--cs-surface-elevated)'
-                    : 'transparent',
-                  color: active ? 'var(--cs-text)' : 'var(--cs-text-secondary)',
+                  backgroundColor: 'var(--cs-surface)',
+                  borderColor: isSafe ? 'rgba(101, 201, 154, 0.2)' : 'var(--cs-border)',
                 }}
               >
-                {tab.label}
-              </button>
-            );
-          })}
-        </div>
-
-        <span
-          className="text-xs font-mono tabular-nums"
-          style={{ color: 'var(--cs-text-muted)' }}
-        >
-          Showing {visibleRecommendations.length} of {recommendations.length}
-        </span>
-      </div>
-
-      {/* Detailed Recommendation Intelligence List */}
-      <div className="space-y-3">
-        {visibleRecommendations.map((rec) => {
-          const isExcluded = excludedFolders.includes(rec.path);
-          return (
-            <article
-              key={rec.id}
-              className="p-5 rounded-lg border space-y-4 transition-colors"
-              style={{
-                backgroundColor: 'var(--cs-surface)',
-                borderColor: 'var(--cs-border)',
-                opacity: isExcluded ? 0.65 : 1,
-              }}
-            >
-              {/* Top Row: Title, Path, Classification & Size */}
-              <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
-                <div className="space-y-1 min-w-0">
-                  <div className="flex flex-wrap items-center gap-2 text-xs">
-                    <RiskIndicator risk={rec.risk} />
-                    <span
-                      aria-hidden="true"
-                      style={{ color: 'var(--cs-text-muted)' }}
-                    >
-                      ·
-                    </span>
-                    <span style={{ color: 'var(--cs-text-secondary)' }}>
-                      {rec.regenerabilityLabel}
-                    </span>
-                    <span
-                      aria-hidden="true"
-                      style={{ color: 'var(--cs-text-muted)' }}
-                    >
-                      ·
-                    </span>
-                    <span
-                      className="font-mono tabular-nums"
-                      style={{ color: 'var(--cs-text-muted)' }}
-                    >
-                      {rec.lastAccessedDaysAgo === 0
-                        ? 'Modified today'
-                        : `Idle ${rec.lastAccessedDaysAgo}d`}
-                    </span>
-                    {isExcluded && (
-                      <>
-                        <span
-                          aria-hidden="true"
-                          style={{ color: 'var(--cs-text-muted)' }}
-                        >
-                          ·
-                        </span>
-                        <span style={{ color: 'var(--cs-warning)' }}>
-                          Excluded from scans
-                        </span>
-                      </>
-                    )}
-                  </div>
-
-                  <h2
-                    className="text-base font-semibold tracking-tight"
-                    style={{ color: 'var(--cs-text)' }}
-                  >
-                    {rec.title}
-                  </h2>
-
-                  <div
-                    className="text-xs font-mono break-all"
-                    style={{ color: 'var(--cs-text-muted)' }}
-                  >
-                    {rec.path}
-                  </div>
-                </div>
-
-                <div className="sm:text-right shrink-0">
-                  <div
-                    className="text-xl font-semibold font-mono tabular-nums"
-                    style={{ color: 'var(--cs-text)' }}
-                  >
-                    {formatBytes(rec.sizeBytes, unitMode)}
-                  </div>
-                  <div
-                    className="text-[11px]"
-                    style={{ color: 'var(--cs-text-muted)' }}
-                  >
-                    {rec.category}
-                  </div>
-                </div>
-              </div>
-
-              {/* Structured 3-Column Explanation Grid */}
-              <div
-                className="grid grid-cols-1 lg:grid-cols-3 gap-5 pt-3.5 border-t text-xs"
-                style={{ borderColor: 'var(--cs-border-subtle)' }}
-              >
-                <div className="space-y-1">
-                  <div
-                    className="font-semibold"
-                    style={{ color: 'var(--cs-text)' }}
-                  >
-                    What it is & why identified
-                  </div>
-                  <p
-                    className="leading-relaxed"
-                    style={{ color: 'var(--cs-text-secondary)' }}
-                  >
-                    {rec.whatItIs} {rec.whyIdentified}
-                  </p>
-                  <div
-                    className="text-[11px] font-mono pt-0.5"
-                    style={{ color: 'var(--cs-text-muted)' }}
-                  >
-                    Detected: {rec.detectedMarkers.join(' · ')}
-                  </div>
-                </div>
-
-                <div className="space-y-1">
-                  <div
-                    className="font-semibold"
-                    style={{ color: 'var(--cs-text)' }}
-                  >
-                    What happens if deleted
-                  </div>
-                  <p
-                    className="leading-relaxed"
-                    style={{ color: 'var(--cs-text-secondary)' }}
-                  >
-                    {rec.deletionConsequence}
-                  </p>
-                  <div
-                    className="text-[11px] pt-0.5"
-                    style={{
-                      color: rec.activeDependenciesDetected
-                        ? 'var(--cs-warning)'
-                        : 'var(--cs-text-muted)',
-                    }}
-                  >
-                    Dependencies: {rec.activeDependencyNote}
-                  </div>
-                </div>
-
-                <div className="space-y-1.5">
-                  <div
-                    className="font-semibold"
-                    style={{ color: 'var(--cs-text)' }}
-                  >
-                    How to restore
-                  </div>
-                  <p
-                    className="leading-relaxed"
-                    style={{ color: 'var(--cs-text-secondary)' }}
-                  >
-                    {rec.restorationSteps}
-                  </p>
-                  {rec.recoveryCommand && (
+                {/* Header row: Title, badge, and size */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                  <div className="flex items-center gap-2.5 min-w-0">
                     <div
-                      className="px-2.5 py-1.5 rounded border font-mono text-[11px] flex items-center gap-2 truncate"
+                      className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
                       style={{
-                        backgroundColor: 'var(--cs-bg)',
-                        borderColor: 'var(--cs-border)',
-                        color: 'var(--cs-accent)',
+                        backgroundColor: isSafe ? 'rgba(101, 201, 154, 0.1)' : 'var(--cs-bg)',
                       }}
                     >
+                      <FolderArchive className="w-4 h-4" style={{ color: isSafe ? 'var(--cs-success)' : 'var(--cs-accent)' }} />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="text-sm font-semibold truncate" style={{ color: 'var(--cs-text)' }}>
+                        {rec.title}
+                      </div>
+                      <div className="text-[11px] font-mono truncate text-[var(--cs-text-muted)]">
+                        {rec.path}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3 shrink-0 self-end sm:self-center">
+                    <RiskIndicator risk={rec.risk} compact />
+                    <span
+                      className="text-base font-semibold font-mono tabular-nums"
+                      style={{ color: isSafe ? 'var(--cs-success)' : 'var(--cs-text)' }}
+                    >
+                      {formatBytes(rec.sizeBytes, unitMode)}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Evidence & Logic Explanation: Simple & Concise */}
+                <div
+                  className="p-3 rounded-lg border text-xs space-y-1.5"
+                  style={{
+                    backgroundColor: 'var(--cs-bg)',
+                    borderColor: 'var(--cs-border-subtle)',
+                  }}
+                >
+                  <div className="flex items-baseline gap-2">
+                    <span className="font-semibold text-[11px] text-[var(--cs-text-secondary)] uppercase tracking-wider shrink-0">
+                      Why safe:
+                    </span>
+                    <span className="text-[var(--cs-text)] text-xs leading-relaxed">
+                      {rec.whyIdentified}
+                    </span>
+                  </div>
+
+                  {rec.recoveryCommand && (
+                    <div className="flex items-center gap-2 pt-1 font-mono text-[11px] text-[var(--cs-text-muted)]">
                       <Terminal className="w-3.5 h-3.5 shrink-0" />
-                      <span className="truncate">{rec.recoveryCommand}</span>
+                      <span className="text-[var(--cs-accent)] truncate">
+                        {rec.recoveryCommand}
+                      </span>
                     </div>
                   )}
                 </div>
-              </div>
 
-              {/* Action Bar */}
-              <div
-                className="pt-3 border-t flex flex-wrap items-center justify-between gap-3"
-                style={{ borderColor: 'var(--cs-border-subtle)' }}
-              >
-                <div
-                  className="text-[11px]"
-                  style={{ color: 'var(--cs-text-muted)' }}
-                >
-                  Artifact: <span className="font-mono">{rec.artifactName}</span>
-                </div>
-
-                <div className="flex items-center gap-2">
+                {/* Bottom Actions */}
+                <div className="flex items-center justify-between gap-3 pt-1">
                   <button
                     type="button"
                     onClick={() => onInspectItem(rec.itemId)}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border text-xs font-medium transition-colors cursor-pointer whitespace-nowrap"
-                    style={{
-                      backgroundColor: 'var(--cs-bg)',
-                      borderColor: 'var(--cs-border)',
-                      color: 'var(--cs-text)',
-                    }}
+                    className="text-xs font-medium text-[var(--cs-text-secondary)] hover:text-[var(--cs-text)] cursor-pointer"
                   >
-                    <FileSearch className="w-3.5 h-3.5" />
-                    <span>Inspect</span>
+                    Inspect details →
                   </button>
 
-                  <button
-                    type="button"
-                    onClick={() => onToggleExclude(rec.path)}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border text-xs font-medium transition-colors cursor-pointer whitespace-nowrap"
-                    style={{
-                      backgroundColor: isExcluded
-                        ? 'var(--cs-accent-muted)'
-                        : 'var(--cs-bg)',
-                      borderColor: 'var(--cs-border)',
-                      color: isExcluded
-                        ? 'var(--cs-accent)'
-                        : 'var(--cs-text-secondary)',
-                    }}
-                  >
-                    <EyeOff className="w-3.5 h-3.5" />
-                    <span>{isExcluded ? 'Excluded' : 'Exclude'}</span>
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => onToggleExclude(rec.path)}
+                      className="px-3 py-1.5 rounded-lg border text-xs font-medium text-[var(--cs-text-secondary)] hover:text-[var(--cs-text)] cursor-pointer"
+                      style={{
+                        backgroundColor: 'var(--cs-surface)',
+                        borderColor: 'var(--cs-border)',
+                      }}
+                    >
+                      Exclude
+                    </button>
 
-                  <button
-                    type="button"
-                    onClick={() => onReviewCleanup(rec)}
-                    className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-md border text-xs font-semibold transition-colors cursor-pointer whitespace-nowrap"
-                    style={{
-                      backgroundColor: 'var(--cs-accent-muted)',
-                      borderColor: 'var(--cs-border)',
-                      color: 'var(--cs-accent)',
-                    }}
-                  >
-                    <span>Review cleanup</span>
-                  </button>
+                    <button
+                      type="button"
+                      onClick={() => onReviewCleanup(rec)}
+                      className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold cursor-pointer transition-opacity hover:opacity-90"
+                      style={{
+                        backgroundColor: isSafe ? 'var(--cs-success)' : 'var(--cs-accent)',
+                        color: '#111214',
+                      }}
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>Clean to Trash</span>
+                    </button>
+                  </div>
                 </div>
               </div>
-            </article>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

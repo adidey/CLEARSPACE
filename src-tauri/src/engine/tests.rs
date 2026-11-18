@@ -588,6 +588,13 @@ mod tests {
             return;
         }
 
+        // Ensure node_modules exists for the test run
+        let nm_dir = demo_path.join("node_modules/left-pad");
+        if !nm_dir.exists() {
+            let _ = std::fs::create_dir_all(&nm_dir);
+            let _ = std::fs::write(nm_dir.join("index.js"), "module.exports = {};");
+        }
+
         let cancel_flag = Arc::new(AtomicBool::new(false));
         let options = ScanOptions {
             target_path: demo_path.to_string_lossy().to_string(),

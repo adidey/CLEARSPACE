@@ -10,7 +10,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "clean": "rm -rf dist",
-    "lint": "tsc --noEmit",
+    "lint": "./node_modules/.bin/tsc --noEmit",
     "tauri": "tauri",
     "desktop": "tauri dev"
   },
